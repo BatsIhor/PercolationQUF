@@ -7,46 +7,20 @@ using System.Text;
 
 namespace PercolationQUF
 {
-    //class Program
-    //{
-    //    static void Main(string[] args)
-    //    {
-    //        int N = 5;
-    //        Percolation perc = new Percolation(N);
-
-    //        while (!perc.percolates())
-    //        {
-    //            Console.WriteLine("Union or x to exit");
-    //            //string str1 = Console.ReadLine();
-    //            //if (str1 == "x")
-    //            //    break;
-    //            //string str2 = Console.ReadLine();
-    //            //int x = int.Parse(str1);
-    //            //int y = int.Parse(str2);
-
-    //            Random rnd = new Random();
-    //            int x = rnd.Next(0, N);
-    //            int y = rnd.Next(0, N);
-
-    //            perc.open(x, y);
-
-    //            perc.Print();
-    //            Console.ReadLine();
-    //        }
-
-    //        perc.Print();
-    //        Console.WriteLine("We did it!");
-    //        Console.ReadLine();
-    //    }
-    //}
-
+    /// <summary>
+    /// Percolation statistics and timing.
+    /// </summary>
     public class PercolationStats
     {
         private double[] results;
 
         private int T;
 
-        // perform T independent computational experiments on an N-by-N grid
+        /// <summary>
+        /// perform T independent computational experiments on an N-by-N grid
+        /// </summary>
+        /// <param name="N"></param>
+        /// <param name="T"></param>
         public PercolationStats(int N, int T)
         {
             this.T = T;
@@ -54,7 +28,6 @@ namespace PercolationQUF
 
             Stopwatch sw = new Stopwatch();
 
-            sw.Start();
             for (int i = 0; i < T; i++)
             {
                 Percolation percolation = new Percolation(N);
@@ -63,7 +36,7 @@ namespace PercolationQUF
                 Random rnd1 = new Random(21);
                 while (!percolation.percolates())
                 {
-                   
+
                     int x = rnd.Next(0, N);
                     int y = rnd1.Next(0, N);
 
@@ -73,23 +46,22 @@ namespace PercolationQUF
                         inserts++;
                     }
 
-                    percolation.Print();
+                    //percolation.Print();
                     //Console.ReadLine();
                 }
-                sw.Stop();
 
-                TimeSpan timeSpan = sw.Elapsed;
-
-                Console.WriteLine(timeSpan);
-                percolation.Print();
+                //percolation.Print();
 
                 results[i] = inserts / (N * N);
-
             }
-
         }
 
-        // sample mean of percolation threshold
+        #region math for statistics
+
+        /// <summary>
+        ///  sample mean of percolation threshold
+        /// </summary>
+        /// <returns></returns>
         public double mean()
         {
             return mean(results);
@@ -112,7 +84,10 @@ namespace PercolationQUF
             return sum;
         }
 
-        // sample standard deviation of percolation threshold
+        /// <summary>
+        ///sample standard deviation of percolation threshold
+        /// </summary>
+        /// <returns></returns>
         public double stddev()
         {
             return stddev(results);
@@ -135,7 +110,10 @@ namespace PercolationQUF
             return sum / (a.Length - 1);
         }
 
-        // returns lower bound of the 95% confidence interval
+        /// <summary>
+        /// returns lower bound of the 95% confidence interval
+        /// </summary>
+        /// <returns></returns>
         public double confidenceLo()
         {
 
@@ -145,7 +123,10 @@ namespace PercolationQUF
             return m - (1.96 * d) / Math.Sqrt(T);
         }
 
-        // returns upper bound of the 95% confidence interval
+        /// <summary>
+        /// returns upper bound of the 95% confidence interval
+        /// </summary>
+        /// <returns></returns>
         public double confidenceHi()
         {
             double m = mean();
@@ -154,155 +135,145 @@ namespace PercolationQUF
             return m + (1.96 * d) / Math.Sqrt(T);
         }
 
-        // test client, described below
+        #endregion
+
+        /// <summary>
+        /// test client, described below
+        /// </summary>
+        /// <param name="args"></param> 
         public static void Main(String[] args)
         {
-            if (args.Length == 2)
-            {
-                int N = 0;
-                int T = 0;
+            int N = 0; //size of array
+            int T = 0; //number times to check
 
-                //int.TryParse(args[0], out N);
-                //int.TryParse(args[1], out T);
+            string n = Console.ReadLine();
+            string t = Console.ReadLine();
 
-                string x = Console.ReadLine();
-                string y = Console.ReadLine();
-                int.TryParse(x, out N);
-                int.TryParse(y, out T);
+            int.TryParse(n, out N);
+            int.TryParse(t, out T);
 
-                PercolationStats percolationStats = new PercolationStats(N, T);
+            Stopwatch sw = new Stopwatch();
 
-                Console.WriteLine("mean\t\t\t= " + percolationStats.mean());
-                Console.WriteLine("stddev\t\t\t= " + percolationStats.stddev());
+            sw.Start();
+            PercolationStats percolationStats = new PercolationStats(N, T);
+            sw.Stop();
 
-                Console.WriteLine("95% confidence interval = {0}, {1}", percolationStats.confidenceHi(), percolationStats.confidenceLo());
+            Console.WriteLine("mean\t\t\t= " + percolationStats.mean());
+            Console.WriteLine("stddev\t\t\t= " + percolationStats.stddev());
+            Console.WriteLine("95% confidence interval = {0}, {1}", percolationStats.confidenceHi(), percolationStats.confidenceLo());
+            Console.WriteLine("Time = {0}", sw.Elapsed);
 
-                Console.ReadLine();
-            }
+            Console.ReadLine();
         }
     }
 
+    /// <summary>
+    /// Percolation logic itself
+    /// </summary>
     public class Percolation
     {
-        private WeightedQuickUnionUF uf;
-        private int[,] indexes;
-        private bool[,] openItems;
-
+        //replace with array
+        private int[, ] seeds;
+        private bool[, ] openSeeds;
+        private int dimens;
         private int N;
 
-        // create N-by-N grid, with all sites blocked
+        private WeightedQuickUnionUF wQU;
+
         public Percolation(int N)
         {
-            uf = new WeightedQuickUnionUF(N * N + 2);
-
             this.N = N;
+            dimens = N * N;
+            seeds = new int[N, N];
+            openSeeds = new bool[N, N];
+
             int x = 0;
 
-            indexes = new int[N, N];
-            openItems = new bool[N, N];
             for (int i = 0; i < N; i++)
-            {
                 for (int j = 0; j < N; j++)
                 {
-                    indexes[i, j] = x;
-                    openItems[i, j] = false;
+                    seeds[i, j] = x;
                     x++;
+                    openSeeds[i, j] = false;
                 }
-            }
 
+            wQU = new WeightedQuickUnionUF(dimens + 2);
             for (int i = 0; i < N; i++)
             {
-                uf.union(N * N, i);
-                uf.union(N * N + 1, N * N - N + i);
+                wQU.union(dimens, i);
+                wQU.union(N * N + 1, N * N - N + i);
             }
+
         }
 
-        // open site (row i, column j) if it is not already
+        private void validationIndeces(int i, int j)
+        {
+            if (i < 0 || i > N) throw
+                 new Exception("index i out of bounds " + i);
+            if (j < 0 || j > N) throw
+                 new Exception("index j out of bounds " + j);
+
+        }
+
         public void open(int i, int j)
         {
-            if (i < 0 || i >= N) return;
-            if (j < 0 || j >= N) return;
+            validationIndeces(i, j);
+            openSeeds[i, j] = true;
 
-            if (!isOpen(i, j))
+            if ((j - 1 > 0) && isOpen(i, j - 1))
             {
-                openItems[i, j] = true;
+                wQU.union(seeds[i, j], seeds[i, j - 1]);
             }
 
-            if (i + 1 < N && isOpen(i + 1, j) && uf.connected(uf.find(indexes[i, j]), uf.find(indexes[i + 1, j])))
+            if ((j + 1 < N) && isOpen(i, j + 1))
             {
-                uf.union(uf.find(indexes[i, j]), uf.find(indexes[i + 1, j]));
+                wQU.union(seeds[i, j], seeds[i, j + 1]);
             }
 
-            if (j + 1 < N && isOpen(i, j + 1) && uf.connected(uf.find(indexes[i, j]), uf.find(indexes[i, j + 1])))
+            if ((i - 1 > 0) && isOpen(i - 1, j))
             {
-                uf.union(uf.find(indexes[i, j]), uf.find(indexes[i, j + 1]));
+                wQU.union(seeds[i, j], seeds[i - 1, j]);
             }
 
-            if (i - 1 >= 0 && isOpen(i - 1, j) && uf.connected(uf.find(indexes[i, j]), uf.find(indexes[i - 1, j])))
+            if ((i + 1 < N) && isOpen(i + 1, j))
             {
-                uf.union(uf.find(indexes[i, j]), uf.find(indexes[i - 1, j]));
+                wQU.union(seeds[i, j], seeds[i + 1, j]);
             }
 
-            if (j - 1 >= 0 && isOpen(i, j - 1) && uf.connected(uf.find(indexes[i, j]), uf.find(indexes[i, j - 1])))
+            if (i == 1)
             {
-                uf.union(uf.find(indexes[i, j]), uf.find(indexes[i, j - 1]));
+                wQU.union(dimens, seeds[i, j]);
+            }
+
+            if (i == N)
+            {
+                wQU.union(dimens + 1, seeds[i, j]);
             }
         }
 
-        // does the system percolate?
-        public bool percolates()
-        {
-            return uf.find(N * N) == uf.find(N * N + 1);
-        }
-
-        // is site (row i, column j) open?
         public bool isOpen(int i, int j)
         {
-            if (i < 0 || i > N) throw
-           new Exception("isOpen index i out of bounds " + i);
-            if (j < 0 || j > N) throw
-           new Exception("isOpen index j out of bounds " + j);
-
-            return openItems[i, j];
+            validationIndeces(i, j);
+            return openSeeds[i, j];
         }
 
-        // is site (row i, column j) full?
         public bool isFull(int i, int j)
         {
-            if (i < 0 || i > N) throw
-           new Exception("isFull index i out of bounds " + i);
-            if (j < 0 || j > N) throw
-           new Exception("isFull index j out of bounds " + j);
+            validationIndeces(i, j);
 
-            return uf.find(indexes[i, j]) == uf.find(N * N);
+            return wQU.connected(dimens, seeds[i, j]);
+             
         }
 
-        public void Print()
+        public bool percolates()
         {
-            for (int i = 0; i < N; i++)
-            {
-                for (int j = 0; j < N; j++)
-                {
-                    Console.Write(openItems[i, j] ? 1 : 0);
-                }
-                Console.WriteLine();
-            }
-
-            PrintFull();
-        }
-
-        void PrintFull()
-        {
-            Console.WriteLine();
-            for (int j = 0; j < N * N + 2; j++)
-            {
-                Console.Write(" " + uf.id[j]);
-            }
-            Console.WriteLine();
-
+            return wQU.connected(dimens, dimens + 1);
         }
     }
 
+    /// <summary>
+    /// Wighted quick union alg.
+    /// </summary>
     public class WeightedQuickUnionUF
     {
         public int[] id;
